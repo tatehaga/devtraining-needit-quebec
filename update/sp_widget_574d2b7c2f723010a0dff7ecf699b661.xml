@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?><record_update table="sp_widget">
+    <sp_widget action="INSERT_OR_UPDATE">
+        <category>custom</category>
+        <client_script><![CDATA[function($scope, $rootScope,spUtil) {
+  /* widget controller */
+  var c = this;
+	c.ritmresults=[];
+	c.submit=function(){
+		var splitted = c.ritmlist.split(/[\n,]/);
+		c.server.get({
+        action: "submit",
+        ritms: splitted,
+				ritmdates: c.ritmdate
+      }).then(function (response) {			
+       
+				if(response.data.results.length == 0){
+					c.ritmresults = ['empty'];
+				}
+			else{
+				 c.ritmresults = response.data.results;
+			}
+				c.duedate = c.ritmdate.toString();
+      });
+	};
+	
+}]]></client_script>
+        <controller_as>c</controller_as>
+        <css/>
+        <data_table>sp_instance</data_table>
+        <demo_data/>
+        <description/>
+        <docs/>
+        <field_list/>
+        <has_preview>true</has_preview>
+        <id>ritm_update</id>
+        <internal>false</internal>
+        <link><![CDATA[function link(scope, element, attrs, controller) {  }]]></link>
+        <name>RITM Update</name>
+        <option_schema/>
+        <public>false</public>
+        <roles/>
+        <script><![CDATA[(function() {
+	/* populate the 'data' object */
+	/* e.g., data.table = $sp.getValue('table'); */
+	//if(input && input.ritmdate && input.ritmlist)
+	if(input && input.action === "submit"){
+		var ritminput = input.ritms.join(',');
+		data.results = [];
+		var today = new GlideDateTime();
+		var ritmdate = GlideDateTime(input.ritmdates);
+		//ritmdate.addSeconds(25200);
+		if(today.after(ritmdate)){
+			var ritmQR = new GlideRecord('sc_req_item');
+			ritmQR.addQuery('numberIN' + input.ritms.join(','));
+			ritmQR.query();
+			while (ritmQR.next()) {
+				var ritmObj = {};
+				ritmQR.setValue('due_date',ritmdate);
+				//ritmQR.setValue('state', 3)
+				$sp.getRecordDisplayValues(ritmObj, ritmQR, 'number, state, cat_item, due_date, quantity');
+				data.results.push(ritmObj);
+				ritmQR.update();
+
+			}
+			var taskQR = new GlideRecord('sc_task');
+			taskQR.addQuery('request_item.numberIN' + input.ritms.join(','));
+			taskQR.query();
+			while (taskQR.next()) {
+				var taskObj = {};
+				taskQR.setValue('state',3)
+				$sp.getRecordDisplayValues(taskObj, taskQR, 'number, state, request');
+				data.results.push(taskObj);
+				taskQR.update();
+			}
+		}
+		else{
+			data.results.push("date in future");
+		}
+		console.log(data.results);
+		return;
+	}
+
+})();]]></script>
+        <servicenow>false</servicenow>
+        <sys_class_name>sp_widget</sys_class_name>
+        <sys_created_by>admin</sys_created_by>
+        <sys_created_on>2021-09-22 17:36:49</sys_created_on>
+        <sys_id>574d2b7c2f723010a0dff7ecf699b661</sys_id>
+        <sys_mod_count>159</sys_mod_count>
+        <sys_name>RITM Update</sys_name>
+        <sys_package display_value="NeedIt" source="x_58872_needit">6ead8e780f603200cd674f8ce1050ed1</sys_package>
+        <sys_policy/>
+        <sys_scope display_value="NeedIt">6ead8e780f603200cd674f8ce1050ed1</sys_scope>
+        <sys_update_name>sp_widget_574d2b7c2f723010a0dff7ecf699b661</sys_update_name>
+        <sys_updated_by>admin</sys_updated_by>
+        <sys_updated_on>2021-09-29 14:25:43</sys_updated_on>
+        <template><![CDATA[<div class="panel panel-default">
+  <div class="panel-heading clearfix">
+    <h3 class="panel-title pull-left">
+      ${RITM Update}
+    </h3>
+  </div>
+  <div class="list-group">
+    <a class="list-group-item" ng-repeat="ritm in data.ritms">
+      <h4 class="list-group-item-heading">
+        {{ritm.number}}
+      </h4>
+      <p class="list-group-item-text">
+        {{ritm.cat_item}}
+      </p>
+    </a>
+  </div>
+  <form>
+    <label for="ritmlist">
+      Enter comma or newline delineated list:	
+    </label>
+    <br>
+    <input type="text" id="ritmlist" name="ritmlist" ng-model="c.ritmlist">
+    <br>
+    <label for="ritmdate">
+      Enter a date:
+    </label>
+    <br>
+    <input type="date" id="ritmdate" name="ritmdate" ng-model="c.ritmdate"><br><br>
+    <button name="submit" ng-click="c.submit()">
+      Submit
+    </button>
+  </form>
+  <br>
+  <span ng-if="c.ritmresults[0] === 'date in future'">
+    Date cannot be in the future!
+  </span>  
+  <span ng-if="c.ritmresults[0] === 'empty'">
+    Invalid RITM.
+  </span>
+  <span ng-if="c.ritmresults.length > 0 && c.ritmresults[0] != 'date in future' && c.ritmresults[0] != 'empty'">
+    <div class='tasks' name="tasks" ng-repeat="results in c.ritmresults">
+      RITM/TASK: {{results.number}} has been set to Closed Complete.
+    </div>
+    Due date has been set to {{c.duedate}}.
+  </span>
+</div>]]></template>
+    </sp_widget>
+</record_update>
